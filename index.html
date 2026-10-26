@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#171536">
+<meta name="description" content="Spin the Wheel — a free entertainment game.">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Spin &amp; Win</title>
+<style>
+:root{color-scheme:dark;--bg:#10132f;--panel:#211b4c;--gold:#ffcc55}
+*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:18px;background:radial-gradient(circle at top,#34236d,#10132f 65%);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#fff}
+main{width:min(100%,460px);text-align:center;padding:24px 20px;border:1px solid #ffffff1c;border-radius:28px;background:#171735e8;box-shadow:0 20px 70px #0005}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.24em;color:#bdb5ff}h1{font-size:clamp(30px,8vw,42px);margin:8px 0}p{color:#c9c6e7;line-height:1.5}.wheel-wrap{position:relative;width:min(78vw,330px);aspect-ratio:1;margin:22px auto 18px;padding:7px;border-radius:50%;background:linear-gradient(135deg,#fff0a6,#ffad36,#fff0a6);box-shadow:0 0 28px #8870ff44}
+canvas{display:block;width:100%;height:100%;border-radius:50%}.pointer{position:absolute;z-index:2;top:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:34px solid white;filter:drop-shadow(0 3px 3px #0008)}
+.hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;display:grid;place-items:center;background:#fff0c9;color:#2b2056;border:5px solid #ffcf58;font-size:24px;pointer-events:none}
+button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}.main-btn{width:100%;padding:16px;border-radius:16px;background:linear-gradient(90deg,#ffcc55,#ff8d64);color:#281b47;font-size:17px;font-weight:900;box-shadow:0 6px 20px #ff9a5330}.main-btn:disabled{opacity:.8}.status{min-height:24px;font-size:14px;font-weight:700;color:#d4d0ff}.result{margin-top:16px;padding:16px;border-radius:18px;background:#ffffff0c;border:1px solid #ffffff1c}.result h2{margin:8px 0;font-size:25px}.again{margin-top:10px;padding:12px 20px;border-radius:12px;background:#ffffff18;border:1px solid #ffffff30;color:white;font-weight:800}.small{font-size:12px;color:#aaa8ce;margin-top:20px;padding-top:14px;border-top:1px solid #ffffff1a}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+ <div class="kicker">LUCKY REWARDS</div><h1>Spin &amp; Win 🎁</h1>
+ <p>Give the wheel a spin and reveal a random result.</p>
+ <div class="wheel-wrap"><div class="pointer"></div><canvas id="wheel" width="700" height="700" aria-label="Wheel with six rewards"></canvas><div class="hub">★</div></div>
+ <div class="status" id="status" aria-live="polite">Ready? Let's find your reward!</div>
+ <button class="main-btn" id="main">🎯 SPIN NOW</button>
+ <section class="result" id="result" hidden aria-live="polite"><div class="kicker">YOUR RESULT</div><h2 id="prize"></h2><p id="message"></p><button class="again" id="again">↻ Spin Again</button></section>
+ <div class="small">6 rewards · Random results · Just for fun<br>Demo only — no real prizes are issued.</div>
+</main>
+<script>
+(()=>{'use strict';
+const canvas=document.getElementById('wheel'),ctx=canvas.getContext('2d');
+const rewards=[
+{name:'Mobile',emoji:'📱',color:'#7c4dff'},
+{name:'Headphones',emoji:'🎧',color:'#ff537c'},
+{name:'Gift Voucher',emoji:'🎁',color:'#ff9f43'},
+{name:'Smart Watch',emoji:'⌚',color:'#16a6a0'},
+{name:'Mystery Gift',emoji:'🎉',color:'#4285f4'},
+{name:'Better Luck Next Time',emoji:'🍀',color:'#6654b5'}];
+const n=rewards.length,step=2*Math.PI/n;
+let angle=0,spinning=false,stopping=false,raf=0,last=0,velocity=0,target=0;
+const main=document.getElementById('main'),status=document.getElementById('status'),result=document.getElementById('result');
+function draw(){
+ const c=350,R=344;ctx.clearRect(0,0,700,700);
+ rewards.forEach((r,i)=>{const a=-Math.PI/2+i*step+angle;
+  ctx.beginPath();ctx.moveTo(c,c);ctx.arc(c,c,R,a,a+step);ctx.closePath();ctx.fillStyle=r.color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.stroke();
+  ctx.save();ctx.translate(c,c);ctx.rotate(a+step/2);ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='44px sans-serif';ctx.fillStyle='#fff';ctx.fillText(r.emoji,R*.63,0);
+  ctx.font='bold 20px system-ui,sans-serif';const lines=r.name==='Better Luck Next Time'?['Better Luck','Next Time']:r.name==='Gift Voucher'?['Gift','Voucher']:[r.name];
+  lines.forEach((s,j)=>ctx.fillText(s,R*.34,(j-(lines.length-1)/2)*24));ctx.restore();
+ });
+}
+function selected(){let a=((Math.PI*1.5-angle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);return Math.floor(a/step)%n}
+function finish(){spinning=false;stopping=false;cancelAnimationFrame(raf);raf=0;const r=rewards[selected()];
+ status.textContent='🎊 Your spin is complete!';document.getElementById('prize').textContent=r.emoji+' '+r.name;
+ document.getElementById('message').textContent=r.name==='Better Luck Next Time'?'No worries — give it another spin!':'That is your randomly selected result.';
+ result.hidden=false;main.textContent='↻ SPIN AGAIN';main.disabled=false;draw();}
+function animate(t){if(!spinning)return;if(!last)last=t;const dt=Math.min((t-last)/1000,.04);last=t;
+ if(stopping){let diff=((target-angle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);if(diff>Math.PI)diff-=2*Math.PI;
+  angle+=diff*Math.min(1,dt*3.5);if(Math.abs(diff)<.008){angle=target;draw();finish();return;}
+ }else{angle+=velocity*dt;velocity=Math.max(2.5,velocity-dt*.15)}
+ draw();raf=requestAnimationFrame(animate);}
+function start(){if(spinning)return;result.hidden=true;spinning=true;stopping=false;last=0;velocity=16+Math.random()*3;status.textContent='Wheel spinning… tap STOP when ready!';main.textContent='⏹ STOP';main.disabled=false;raf=requestAnimationFrame(animate);}
+function stop(){if(!spinning||stopping)return;stopping=true;const chosen=Math.floor(Math.random()*n);
+ const desired=((Math.PI*1.5-(chosen+.5)*step)%(2*Math.PI)+2*Math.PI)%(2*Math.PI),current=((angle%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+ target=angle+2*Math.PI*(3+Math.floor(Math.random()*3))+((desired-current+2*Math.PI)%(2*Math.PI));
+ status.textContent='Slowing down… revealing your result!';main.textContent='✨ REVEALING…';main.disabled=true;}
+main.addEventListener('click',()=>{if(!spinning)start();else if(!stopping)stop();});
+document.getElementById('again').addEventListener('click',start);
+draw();
+})();
+</script>
+</body></html>
